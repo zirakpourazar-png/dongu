@@ -546,7 +546,7 @@ function refresh(){
   const hero=document.getElementById("hero");
   hero.textContent="";
   if(spend){
-    const tone=capLeft<0?"red":over?"amber":"";
+    const tone=capLeft<0?"red":"";
     hero.appendChild(h("div",{class:"hero"},
       h("div",{class:"herotop"},
         h("div",{},
@@ -561,8 +561,7 @@ function refresh(){
         if(c.isLive)bar.appendChild(h("div",{class:"marker",style:{left:Math.min(100,(c.elapsed/c.days)*100)+"%"}}));
         return bar;
       })(),
-      c.isLive&&cap>0?h("div",{class:"pace"},t("paceLead",fmt(pace)),
-        h("span",{class:over?"amber":"good",text:over?t("ahead",fmt(spent-pace)):t("behind",fmt(pace-spent))})):null));
+      null));
   }
 
   const warn=document.getElementById("warn");
@@ -572,8 +571,7 @@ function refresh(){
       text:t("wCarry",r.label||t("wItem"),r.months,fmt(r.balance))}));
   }));
   if(net<0)warn.appendChild(h("div",{class:"w red",text:t("wShort",fmt(-net))}));
-  if(c.isLive&&c.left>0&&cap>0&&projected>cap)
-    warn.appendChild(h("div",{class:"w red",text:t("wPace",fmt(projected),fmt(projected-cap))}));
+
 
   const foot=document.getElementById("foot");
   foot.textContent="";

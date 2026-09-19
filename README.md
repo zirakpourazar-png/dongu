@@ -19,7 +19,9 @@ Kağıt üzerinde tutulan aylık bütçe defterinin dijital karşılığı: ayn�
 
 **Biriken bölümü iki sütunludur:** solda kalan borç, sağda bu döngüde ödenecek tutar. Sağ sütunu boş bırakırsan satır "2. döngü", "3. döngü" diye saymaya başlar ve uyarı çıkar. Ertelenen kalemin kaç aydır ertelendiğini görmek bunun tek amacı.
 
-**Üstteki büyük rakam** kalan günler için günlük harcama limiti. Çubuktaki dikey çizgi bugün olman gereken yeri gösterir; çubuk çizgiyi geçtiyse plandan öndesin, renk sarıya döner. Ay sonunu beklemeden görürsün.
+**Üstteki büyük rakam** kalan günler için günlük harcama limiti: kalan tavan ÷ kalan gün. Harcadıkça aşağı iner, harcamadığın gün yukarı çıkar. Tavan aşılırsa eksiye düşer ve kırmızıya döner.
+
+Bilinçli olarak "planın önünde/gerisindesin" gibi bir tempo göstergesi yok. Öyle bir oran ancak döngünün ilk gününden itibaren her harcama kaydedilirse doğru olur; bir gün atlandığında program bunu "harcamadı" sayar ve yanıltır.
 
 **Yeni döngü öncekinden devralır.** Sabit kalemler ve ödenmemiş biriken bakiyeler otomatik taşınır, günlük harcama listesi sıfırlanır.
 
