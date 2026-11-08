@@ -1,4 +1,4 @@
-const CACHE = "dongu-v2";
+const CACHE = "dongu-v6";
 const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icon-512.png"];
 
 self.addEventListener("install", e => {

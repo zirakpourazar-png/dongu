@@ -15,7 +15,8 @@ Kağıt üzerinde tutulan aylık bütçe defterinin dijital karşılığı: ayn�
 | Giriş | Maaş, ek gelir | Ekler |
 | Sabit gider | Kira, kredi, fatura | Çıkarır |
 | Biriken | Devreden borç, ertelenen ödeme | Çıkarır (sadece o ay ayrılan kısım) |
-| Günlük harcama | Tavanı olan, gün gün girilen | Çıkarır |
+| Günlük harcama | Tavanı olan, gün gün girilen | Nakit olanı çıkarır |
+| Kart | Limit, borç, taksitler | Sadece o döngüde ödenen kısmı çıkarır |
 
 **Biriken bölümü iki sütunludur:** solda kalan borç, sağda bu döngüde ödenecek tutar. Sağ sütunu boş bırakırsan satır "2. döngü", "3. döngü" diye saymaya başlar ve uyarı çıkar. Ertelenen kalemin kaç aydır ertelendiğini görmek bunun tek amacı.
 
@@ -23,7 +24,23 @@ Kağıt üzerinde tutulan aylık bütçe defterinin dijital karşılığı: ayn�
 
 Bilinçli olarak "planın önünde/gerisindesin" gibi bir tempo göstergesi yok. Öyle bir oran ancak döngünün ilk gününden itibaren her harcama kaydedilirse doğru olur; bir gün atlandığında program bunu "harcamadı" sayar ve yanıltır.
 
-**Yeni döngü öncekinden devralır.** Sabit kalemler ve ödenmemiş biriken bakiyeler otomatik taşınır, günlük harcama listesi sıfırlanır.
+**Kart ayrı bir havuzdur.** Harcama girerken nakit mi kartla mı aldığını seçersin. Kartla alınan şey o ayın nakdinden düşmez — kartın limitinden düşer ve bir sonraki döngünün "ödenecek" satırına geçer. Alt özette iki rakam durur: *Kalan (nakit)* ve *karta binen*.
+
+Kart bölümü iki parçadır. Üstte **limit**: büyük rakam şu an harcayabileceğin tutar, altında dönem başı boşta olan ve bu dönem harcanan. Altta **ödeme**: bu ay ödenecek, ödedim, gelecek ay ödenecek, sonraki aylara kalan.
+
+Üç alanı sen girersin, yanlarında `sen gir` etiketi vardır: kartın toplam limiti, dönem başında bankada boşta görünen tutar, ve ekstrendeki ödenecek tutar. Boşta rakamını girmen gerekir çünkü uygulama senin ondan önceki borcunu bilemez. Geri kalan satırlar hesaplanır: karta binen her şey boştadan düşer, ödeme yaptıkça geri açılır, hesaplanan değer bir sonraki döngüye devreder. Banka ile uyuşmazsa alanı elle düzeltirsin.
+
+`ödedim` tek istisnadır: oraya yazdığın tutar nakit Kalan'dan düşer, çünkü kart borcunu nakitle ödersin.
+
+Harcama bölümünün başlığında bir **varsayılan** seçimi var. Çoğu şeyi kartla alıyorsan oraya kartı koyarsın; her girişte tek tek seçmen gerekmez. Tek seferlik istisnada form üstünden nakde çevirirsin, ekledikten sonra kendi varsayılanına döner.
+
+Taksitli alışverişte taksit sayısını girersin. O döngüye bir taksit biner, kalanı sonraki döngülere otomatik dağılır. Limitte ise tutarın tamamı bloke görünür — bankalar da böyle yapar.
+
+Asgari ödeme tutarı bilinçli olarak yok. Asgari ödemek kalan bakiyeye faiz işletir ve borcu büyütür; ekranda hedef gibi durmasını istemedim.
+
+**Yeni döngü öncekinden devralır.** Sabit kalemler, girişler, tavan, kart ayarları ve ödenmemiş biriken bakiyeler otomatik taşınır; günlük harcama listesi sıfırlanır. Arada kullanmadığın aylar olduysa devir en son kullandığın döngüyü bulur (12 aya kadar geriye bakar).
+
+Devir **kopyalamadır**: aylar birbirinden bağımsızdır, birinde yaptığın değişiklik diğerini etkilemez. Tek istisna kart ve biriken borçlardır; onlar zincirleme devam eder.
 
 ## Dil
 
@@ -63,7 +80,7 @@ Bağımlılık yok, derleme adımı yok. `index.html` doğrudan tarayıcıda aç
 `index.html` değiştirildiğinde `sw.js` içindeki
 
 ```js
-const CACHE = "dongu-v1";
+const CACHE = "dongu-v6";
 ```
 
-satırındaki sürüm numarası artırılmalı (`dongu-v2`). Yoksa cihazlar eski sürümü göstermeye devam eder.
+satırındaki sürüm numarası bir artırılmalı (`dongu-v7`, sonra `v8`…). Yoksa cihazlar eski sürümü göstermeye devam eder.

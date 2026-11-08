@@ -117,6 +117,35 @@ input::placeholder{color:var(--faint)}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 
 .ghost.on{border-color:var(--blue);color:var(--ink);background:var(--panel)}
+.cardtop{display:flex;flex-direction:column;gap:10px;background:var(--panel);border-radius:8px;padding:12px;margin-bottom:10px}
+.cardbig{font:600 28px var(--mono);font-variant-numeric:tabular-nums;line-height:1;margin-top:4px}
+.cardbig.red{color:var(--red)}
+.cardbar{position:relative;height:6px;background:var(--panelhi);border-radius:3px}
+.cardfill{position:absolute;left:0;top:0;bottom:0;background:var(--amber);border-radius:3px}
+.cardfill.red{background:var(--red)}
+.cardrows{margin-bottom:8px}
+.cardline{display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid var(--panel)}
+.cardval{font:500 15px var(--mono);font-variant-numeric:tabular-nums;color:var(--ink)}
+.cardval.amber{color:var(--amber)}.cardval.faint{color:var(--faint)}
+.num.good{color:var(--good)}
+.plans{margin-top:6px}
+.planrow{display:flex;align-items:center;gap:8px;padding:4px 0}
+.planlbl{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:400 14px var(--sans)}
+.planamt{font:400 14px var(--mono);color:var(--amber);font-variant-numeric:tabular-nums}
+.sel.sm{padding:3px 6px;font:500 12px var(--sans)}
+.num.tk{width:38px;border-bottom:1px solid var(--line)}
+.badge{font:500 10px var(--sans);color:var(--amber);border:1px solid var(--line);border-radius:4px;padding:1px 5px;white-space:nowrap}
+.footamt.amber{color:var(--amber)}
+.sub.amber{color:var(--amber)}
+.grouphead{font:600 11px var(--sans);color:var(--faint);letter-spacing:.06em;text-transform:uppercase;margin:14px 0 4px}
+.cardtop .cardline{border-bottom:none;border-top:1px solid var(--panelhi);padding:6px 0 2px}
+.cardtop .cardline+.cardline{border-top:none;padding-top:2px}
+.cardline.inp{gap:8px}
+.lblwrap{display:flex;flex-direction:column;flex:1;min-width:0}
+.sublbl{font:400 10px var(--sans);color:var(--faint);margin-top:1px}
+.tag{font:500 9px var(--sans);color:var(--faint);border:1px solid var(--line);border-radius:3px;padding:1px 4px;white-space:nowrap;flex:0 0 auto}
+.cardline.inp .num{border-bottom:1px dashed var(--blue)}
+.cardline.inp .num.good{border-bottom-color:var(--good)}
 
 </style>
 </head>
@@ -148,6 +177,16 @@ const L={
   backupHint:"Telefon ve bilgisayar ayrı veri tutar — aktarmak için yedek dosyasını kullan.",
   storeHint:"Veriler bu cihazda saklanır · yeni döngü öncekinden devralır",
   saved:"kaydedildi", notSaved:"kaydedilemedi", badFile:"Dosya okunamadı.",
+  kind_card:"Kart", sec_card:"Kart", limitLbl:"limit", remLimit:"şu an harcayabileceğin",
+  availLbl:"dönem başı boştaydı", blockedLbl:"bu dönem harcanan", defmLbl:"varsayılan",
+  youType:"sen gir", calced:"hesaplanıyor",
+  payHead:"Ödeme", plansHead:"Taksitler",
+  cardDue:"bu ay ödenecek", cardDueHint:"ekstrende yazan",
+  cardPaid:"ödedim", cardPaidHint:"nakitten düşer",
+  onCard:"gelecek ay ödenecek", futureInst:"sonraki aylara kalan",
+  instLeft:n=>n+" taksit kaldı",
+  methodCash:"nakit", tkLbl:"taksit", overLimit:"limit aşıldı",
+  netCash:"Kalan (nakit)", noPlans:"taksitli alışveriş yok",
   title:"Para Döngüsü", locale:"tr-TR"
  },
  en:{
@@ -172,6 +211,16 @@ const L={
   backupHint:"Phone and computer keep separate data — use the backup file to move it.",
   storeHint:"Data stays on this device · a new cycle inherits from the previous one",
   saved:"saved", notSaved:"not saved", badFile:"Could not read the file.",
+  kind_card:"Card", sec_card:"Card", limitLbl:"limit", remLimit:"you can still spend",
+  availLbl:"available at cycle start", blockedLbl:"spent this cycle", defmLbl:"default",
+  youType:"you enter", calced:"calculated",
+  payHead:"Payment", plansHead:"Instalments",
+  cardDue:"due this month", cardDueHint:"from your statement",
+  cardPaid:"I paid", cardPaidHint:"comes out of cash",
+  onCard:"due next month", futureInst:"later months",
+  instLeft:n=>n+" instalments left",
+  methodCash:"cash", tkLbl:"x", overLimit:"over limit",
+  netCash:"Left (cash)", noPlans:"no instalment purchases",
   title:"Money Cycle", locale:"en-US"
  }
 };
@@ -223,15 +272,36 @@ const KINDS={
   in:{key:"kind_in",cls:"good",sign:1},
   out:{key:"kind_out",cls:"blue",sign:-1},
   carry:{key:"kind_carry",cls:"amber",sign:-1},
-  spend:{key:"kind_spend",cls:"blue",sign:-1}
+  spend:{key:"kind_spend",cls:"blue",sign:-1},
+  card:{key:"kind_card",cls:"amber",sign:-1}
 };
+const isCash=e=>!e.m||e.m==="cash";
+const perInst=p=>p.n?(p.total||0)/p.n:0;
+const instDue=c=>(c.plans||[]).reduce((a,p)=>a+((p.paid||0)<p.n?perInst(p):0),0);
+const instFuture=c=>(c.plans||[]).reduce((a,p)=>a+Math.max(0,p.n-(p.paid||0)-1)*perInst(p),0);
+function cardCharge(data,cardId){
+  let v=0;
+  data.sections.forEach(sec=>{ if(sec.kind==="spend")sec.expenses.forEach(e=>{
+    if(e.m===cardId&&(!e.tk||e.tk<2))v+=e.amount||0;});});
+  return v;
+}
+function cardBlocked(data,cardId){           // bu dongude karta binen her sey, tam tutar
+  let v=0;
+  data.sections.forEach(sec=>{ if(sec.kind==="spend")sec.expenses.forEach(e=>{
+    if(e.m===cardId)v+=e.amount||0;});});
+  return v;
+}
+const cardAvail=(data,c)=>(c.avail||0)-cardBlocked(data,c.id)+(c.pay||0);
 const secTotal=s=>{
   if(s.kind==="carry")return s.rows.reduce((a,r)=>a+(r.alloc||0),0);
-  if(s.kind==="spend")return s.expenses.reduce((a,e)=>a+(e.amount||0),0);
+  if(s.kind==="spend")return s.expenses.filter(isCash).reduce((a,e)=>a+(e.amount||0),0);
+  if(s.kind==="card")return s.pay||0;
   return s.rows.reduce((a,r)=>a+(r.amount||0),0);
 };
 const newSection=k=>k==="spend"
-  ?{id:uid(),kind:k,name:t(KINDS[k].key),cap:0,expenses:[],rows:[]}
+  ?{id:uid(),kind:k,name:t(KINDS[k].key),cap:0,defm:"cash",expenses:[],rows:[]}
+  :k==="card"
+  ?{id:uid(),kind:k,name:t(KINDS[k].key),limit:0,avail:0,debt:0,pay:0,plans:[],rows:[]}
   :{id:uid(),kind:k,name:t(KINDS[k].key),rows:[]};
 
 const SEED=()=>({sections:[
@@ -246,6 +316,12 @@ const SEED=()=>({sections:[
 
 const rollover=prev=>({sections:prev.sections.map(s=>{
   if(s.kind==="spend")return Object.assign({},s,{id:uid(),expenses:[]});
+  if(s.kind==="card")return Object.assign({},s,{
+    id:s.id,
+    debt:Math.max(0,(s.debt||0)-(s.pay||0))+cardCharge(prev,s.id)+instDue(s),
+    avail:cardAvail(prev,s),
+    pay:0,
+    plans:(s.plans||[]).map(p=>Object.assign({},p,{paid:(p.paid||0)+1})).filter(p=>p.paid<p.n)});
   if(s.kind==="carry")return Object.assign({},s,{id:uid(),rows:s.rows.map(r=>({
     id:uid(),label:r.label,balance:Math.max(0,(r.balance||0)-(r.alloc||0)),
     alloc:0,months:(r.alloc||0)>0?1:(r.months||1)+1})).filter(r=>r.balance>0)});
@@ -253,7 +329,7 @@ const rollover=prev=>({sections:prev.sections.map(s=>{
 })});
 
 /* ---------- state ---------- */
-const S={startDay:7,lang:"tr",id:null,data:null,draft:{date:iso(new Date()),label:"",amount:""},settingsOpen:false,status:""};
+const S={startDay:7,lang:"tr",id:null,data:null,draft:{date:iso(new Date()),label:"",amount:"",m:"cash",tk:1},settingsOpen:false,status:""};
 
 function loadSettings(){
   const raw=LS.get("pd:settings");
@@ -262,8 +338,13 @@ function loadSettings(){
 function loadCycle(id){
   const raw=LS.get("pd:cycle:"+id);
   if(raw){try{return JSON.parse(raw);}catch(e){}}
-  const prev=LS.get("pd:cycle:"+shiftCycle(id,-1,S.startDay));
-  if(prev){try{return rollover(JSON.parse(prev));}catch(e){}}
+  // atlanan aylar olabilir: en son kullanilan donguyu geriye dogru ara (12 aya kadar)
+  let cur=id;
+  for(let k=0;k<12;k++){
+    cur=shiftCycle(cur,-1,S.startDay);
+    const prev=LS.get("pd:cycle:"+cur);
+    if(prev){try{return rollover(JSON.parse(prev));}catch(e){}}
+  }
   return SEED();
 }
 let saveTimer=null;
@@ -379,15 +460,30 @@ function sectionEl(s,idx){
   if(s.kind==="spend"){
     head.appendChild(h("span",{class:"mini",text:t("cap")}));
     head.appendChild(numInput(()=>s.cap||0,v=>{s.cap=v;},70));
+    const dSel=h("select",{class:"sel sm",title:t("defmLbl")});
+    dSel.appendChild(h("option",{value:"cash",text:t("methodCash")}));
+    S.data.sections.filter(x=>x.kind==="card").forEach(c=>
+      dSel.appendChild(h("option",{value:c.id,text:c.name||t("sec_card")})));
+    dSel.value=s.defm||"cash";
+    dSel.addEventListener("change",()=>{s.defm=dSel.value;S.draft.mSet=false;flushSave();render();});
+    head.appendChild(dSel);
+  }else if(s.kind==="card"){
+    head.appendChild(h("span",{class:"mini",text:t("limitLbl")}));
+    head.appendChild(numInput(()=>s.limit||0,v=>{s.limit=v;},80));
   }else{
     head.appendChild(h("button",{class:"ghost",text:t("addRow"),onclick:()=>{
       s.rows.push(s.kind==="carry"?{id:uid(),label:"",balance:0,alloc:0,months:1}:{id:uid(),label:"",amount:0});
       scheduleSave();render();}}));
   }
   head.appendChild(h("button",{class:"nav sm","aria-label":t("moveUp"),onclick:()=>moveUp(idx),text:"↑"}));
-  head.appendChild(xBtn(()=>{S.data.sections=S.data.sections.filter(x=>x.id!==s.id);scheduleSave();render();}));
+  head.appendChild(xBtn(()=>{
+    if(s.kind==="card")S.data.sections.forEach(sec=>{ if(sec.kind==="spend"){
+      if(sec.defm===s.id)sec.defm="cash";
+      sec.expenses.forEach(e=>{ if(e.m===s.id){e.m="cash";e.tk=1;}});}});
+    if(s.kind==="card")S.draft.mSet=false;
+    S.data.sections=S.data.sections.filter(x=>x.id!==s.id);scheduleSave();render();}));
 
-  const body=s.kind==="spend"?spendBody(s):bracketBody(s);
+  const body=s.kind==="spend"?spendBody(s):s.kind==="card"?cardBody(s):bracketBody(s);
   return h("div",{class:"sec"},head,body);
 }
 
@@ -429,16 +525,35 @@ function spendBody(s){
   lblI.addEventListener("input",()=>{S.draft.label=lblI.value;});
   const amtI=h("input",{class:"num amt",inputmode:"numeric",placeholder:"0"});amtI.value=S.draft.amount;
   amtI.addEventListener("input",()=>{S.draft.amount=amtI.value;});
+  const cards=S.data.sections.filter(x=>x.kind==="card");
+  const mSel=h("select",{class:"sel sm"});
+  mSel.appendChild(h("option",{value:"cash",text:t("methodCash")}));
+  cards.forEach(c=>mSel.appendChild(h("option",{value:c.id,text:c.name||t("sec_card")})));
+  if(!S.draft.mSet)S.draft.m=s.defm||"cash";
+  if(S.draft.m!=="cash"&&!cards.some(c=>c.id===S.draft.m))S.draft.m="cash";
+  mSel.value=S.draft.m;
+  const tkI=h("input",{class:"num tk",inputmode:"numeric",title:t("tkLbl")});
+  tkI.value=S.draft.tk||1;
+  tkI.style.display=S.draft.m==="cash"?"none":"";
+  tkI.addEventListener("input",()=>{S.draft.tk=Math.max(1,parseInt(tkI.value,10)||1);});
+  mSel.addEventListener("change",()=>{S.draft.m=mSel.value;S.draft.mSet=true;
+    tkI.style.display=S.draft.m==="cash"?"none":"";});
   const add=()=>{
     const n=parseNum(S.draft.amount);
     if(n<=0)return;
-    s.expenses.push({id:uid(),date:S.draft.date,label:(S.draft.label||"").trim()||"—",amount:n});
-    S.draft.label="";S.draft.amount="";
+    const lbl=(S.draft.label||"").trim()||"—";
+    const tk=S.draft.m==="cash"?1:Math.max(1,parseInt(S.draft.tk,10)||1);
+    s.expenses.push({id:uid(),date:S.draft.date,label:lbl,amount:n,m:S.draft.m,tk:tk});
+    if(S.draft.m!=="cash"&&tk>1){
+      const card=S.data.sections.filter(x=>x.id===S.draft.m)[0];
+      if(card){card.plans=card.plans||[];card.plans.push({id:uid(),label:lbl,total:n,n:tk,paid:0});}
+    }
+    S.draft.label="";S.draft.amount="";S.draft.tk=1;S.draft.mSet=false;
     flushSave();render();
     const f=document.getElementById("draftlabel");if(f)f.focus();
   };
   [lblI,amtI].forEach(i=>i.addEventListener("keydown",e=>{if(e.key==="Enter")add();}));
-  const form=h("div",{class:"form"},dateI,lblI,amtI,h("button",{class:"primary",text:t("add"),onclick:add}));
+  const form=h("div",{class:"form"},dateI,lblI,amtI,mSel,tkI,h("button",{class:"primary",text:t("add"),onclick:add}));
 
   const list=h("div",{});
   const m={};
@@ -448,17 +563,74 @@ function spendBody(s){
   days.forEach(d=>{
     const dt=new Date(d+"T00:00:00");
     const sum=m[d].reduce((a,e)=>a+e.amount,0);
+    const cardName=id=>{const c=S.data.sections.filter(x=>x.id===id)[0];return c?(c.name||t("sec_card")):null;};
     list.appendChild(h("div",{class:"dayhead"},
       h("span",{class:"daylbl",text:dt.getDate()+" "+AY(dt.getMonth())}),
       h("span",{class:"daysum"+(dailyCap&&sum>dailyCap?" amber":""),text:fmt(sum)})));
     m[d].forEach(e=>list.appendChild(h("div",{class:"exprow"},
       h("span",{class:"explbl",text:e.label}),
+      isCash(e)?null:h("span",{class:"badge",text:(cardName(e.m)||t("sec_card"))+(e.tk>1?" ×"+e.tk:"")}),
       h("span",{class:"expamt",text:fmt(e.amount)}),
       xBtn(()=>{s.expenses=s.expenses.filter(x=>x.id!==e.id);flushSave();render();}))));
   });
   return h("div",{},form,list,
-    h("div",{class:"spendtot"},h("span",{class:"mini",text:t("total")}),
-      h("span",{class:"sub blue",id:"sub-"+s.id,text:fmt(secTotal(s))})));
+    h("div",{class:"spendtot"},
+      h("span",{class:"mini",text:t("methodCash")}),
+      h("span",{class:"sub blue",id:"sub-"+s.id,text:fmt(secTotal(s))}),
+      h("span",{class:"mini",style:{marginLeft:"14px"},text:t("onCard")}),
+      h("span",{class:"sub amber",id:"oncard-"+s.id,
+        text:fmt(s.expenses.filter(e=>!isCash(e)).reduce((a,e)=>a+(e.amount||0),0))})));
+}
+
+function cardBody(s){
+  const charge=cardCharge(S.data,s.id);
+  const blocked=cardBlocked(S.data,s.id);
+  const rem=cardAvail(S.data,s);
+  const rows=h("div",{class:"cardrows"});
+  const line=(lbl,val,cls,id)=>h("div",{class:"cardline"},
+    h("span",{class:"mini",text:lbl}),
+    h("span",{class:"cardval "+(cls||""),id:id,text:fmt(val)}));
+  rows.appendChild(h("div",{class:"cardline inp"},
+    h("span",{class:"lblwrap"},
+      h("span",{class:"mini",text:t("cardDue")}),
+      h("span",{class:"sublbl",text:t("cardDueHint")})),
+    h("span",{class:"tag",text:t("youType")}),
+    numInput(()=>s.debt||0,v=>{s.debt=v;},92)));
+  rows.appendChild(h("div",{class:"cardline inp"},
+    h("span",{class:"lblwrap"},
+      h("span",{class:"mini",text:t("cardPaid")}),
+      h("span",{class:"sublbl",text:t("cardPaidHint")})),
+    h("span",{class:"tag",text:t("youType")}),
+    numInput(()=>s.pay||0,v=>{s.pay=v;},92,"good")));
+  rows.appendChild(line(t("onCard"),charge+instDue(s),"amber","onc-"+s.id));
+  rows.appendChild(line(t("futureInst"),instFuture(s),"faint","fut-"+s.id));
+
+  const plans=h("div",{class:"plans"});
+  if(!(s.plans||[]).length)plans.appendChild(h("div",{class:"hint",text:t("noPlans")}));
+  (s.plans||[]).forEach(p=>plans.appendChild(h("div",{class:"planrow"},
+    h("span",{class:"planlbl",text:p.label||"—"}),
+    h("span",{class:"hint",text:t("instLeft",p.n-(p.paid||0))}),
+    h("span",{class:"planamt",text:fmt(perInst(p))}),
+    xBtn(()=>{s.plans=s.plans.filter(x=>x.id!==p.id);flushSave();render();}))));
+
+  return h("div",{},
+    h("div",{class:"cardtop"},
+      h("div",{},
+        h("div",{class:"mini",text:t("remLimit")}),
+        h("div",{class:"cardbig "+(rem<0?"red":""),id:"rem-"+s.id,text:fmt(rem)})),
+      h("div",{class:"cardbar"},h("div",{class:"cardfill "+(rem<0?"red":""),id:"fill-"+s.id,
+        style:{width:(s.limit?Math.min(100,Math.max(0,((s.limit-rem)/s.limit)*100)):0)+"%"}})),
+      h("div",{class:"cardline inp"},
+        h("span",{class:"mini",text:t("availLbl")}),
+        h("span",{class:"tag",text:t("youType")}),
+        numInput(()=>s.avail||0,v=>{s.avail=v;},92)),
+      h("div",{class:"cardline"},
+        h("span",{class:"mini",text:t("blockedLbl")}),
+        h("span",{class:"cardval amber",id:"blk-"+s.id,text:fmt(blocked)}))),
+    h("div",{class:"grouphead",text:t("payHead")}),
+    rows,
+    h("div",{class:"grouphead",text:t("plansHead")}),
+    plans);
 }
 
 function addSecEl(){
@@ -529,7 +701,28 @@ function refresh(){
   const over=cap>0&&spent>pace;
   const net=S.data.sections.reduce((a,s)=>a+KINDS[s.kind].sign*secTotal(s),0);
 
+  let onCardTotal=0;
   S.data.sections.forEach(s=>{
+    if(s.kind==="spend"){
+      const oc=s.expenses.filter(e=>!isCash(e)).reduce((a,e)=>a+(e.amount||0),0);
+      onCardTotal+=oc;
+      const ocEl=document.getElementById("oncard-"+s.id);
+      if(ocEl)ocEl.textContent=fmt(oc);
+    }
+    if(s.kind==="card"){
+      const rem=cardAvail(S.data,s);
+      const r=document.getElementById("rem-"+s.id);
+      if(r){r.textContent=fmt(rem);r.className="cardbig "+(rem<0?"red":"");}
+      const f=document.getElementById("fill-"+s.id);
+      if(f){f.style.width=(s.limit?Math.min(100,Math.max(0,((s.limit-rem)/s.limit)*100)):0)+"%";
+            f.className="cardfill "+(rem<0?"red":"");}
+      const b=document.getElementById("blk-"+s.id);
+      if(b)b.textContent=fmt(cardBlocked(S.data,s.id));
+      const o=document.getElementById("onc-"+s.id);
+      if(o)o.textContent=fmt(cardCharge(S.data,s.id)+instDue(s));
+      const fu=document.getElementById("fut-"+s.id);
+      if(fu)fu.textContent=fmt(instFuture(s));
+    }
     const el=document.getElementById("sub-"+s.id);
     if(el)el.textContent=fmt(secTotal(s));
     const nt=document.getElementById("note-"+s.id);
@@ -571,6 +764,11 @@ function refresh(){
       text:t("wCarry",r.label||t("wItem"),r.months,fmt(r.balance))}));
   }));
   if(net<0)warn.appendChild(h("div",{class:"w red",text:t("wShort",fmt(-net))}));
+  S.data.sections.filter(x=>x.kind==="card").forEach(c=>{
+    const rem=cardAvail(S.data,c);
+    if(rem<0)warn.appendChild(h("div",{class:"w red",
+      text:(c.name||t("sec_card"))+": "+t("overLimit")+" ("+fmt(-rem)+")"}));
+  });
 
 
   const foot=document.getElementById("foot");
@@ -581,8 +779,11 @@ function refresh(){
       h("span",{class:"mini",text:s.name||t(KINDS[s.kind].key)}),
       h("span",{class:"footamt"+(v<0?"":" good"),text:v<0?"−"+fmt(-v):fmt(v)})));
   });
+  if(onCardTotal>0)foot.appendChild(h("div",{class:"footrow"},
+    h("span",{class:"mini",text:t("onCard")}),
+    h("span",{class:"footamt amber",text:fmt(onCardTotal)})));
   foot.appendChild(h("div",{class:"netrow"},
-    h("span",{class:"netlbl",text:t("net")}),
+    h("span",{class:"netlbl",text:onCardTotal>0?t("netCash"):t("net")}),
     h("span",{class:"net "+(net<0?"red":"good"),text:net<0?"−"+fmt(-net):fmt(net)})));
 }
 
@@ -597,7 +798,6 @@ function boot(){
   flushSave();
 }
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot);else boot();
-
 
 if("serviceWorker" in navigator && location.protocol.slice(0,4)==="http"){
   window.addEventListener("load",function(){navigator.serviceWorker.register("./sw.js").catch(function(){});});
