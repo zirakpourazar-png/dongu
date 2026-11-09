@@ -476,7 +476,7 @@ function sectionEl(s,idx){
     const dSel=h("select",{class:"sel sm",title:t("defmLbl")});
     dSel.appendChild(h("option",{value:"cash",text:t("methodCash")}));
     S.data.sections.filter(x=>x.kind==="card").forEach(c=>
-      dSel.appendChild(h("option",{value:c.id,text:c.name||t("sec_card")})));
+      dSel.appendChild(h("option",{value:c.id,"data-cid":c.id,text:c.name||t("sec_card")})));
     dSel.value=s.defm||"cash";
     dSel.addEventListener("change",()=>{s.defm=dSel.value;S.draft.mSet=false;flushSave();render();});
     head.appendChild(dSel);
@@ -523,7 +523,7 @@ function bracketBody(s){
         if(cards.length){
           const ms=h("select",{class:"sel sm rowm",title:t("defmLbl")});
           ms.appendChild(h("option",{value:"cash",text:t("methodCash")}));
-          cards.forEach(c=>ms.appendChild(h("option",{value:c.id,text:c.name||t("sec_card")})));
+          cards.forEach(c=>ms.appendChild(h("option",{value:c.id,"data-cid":c.id,text:c.name||t("sec_card")})));
           if(!isCash(r)&&!cards.some(c=>c.id===r.m))r.m="cash";
           ms.value=r.m||"cash";
           ms.addEventListener("change",()=>{r.m=ms.value;flushSave();render();});
@@ -556,7 +556,7 @@ function spendBody(s){
   const cards=S.data.sections.filter(x=>x.kind==="card");
   const mSel=h("select",{class:"sel sm"});
   mSel.appendChild(h("option",{value:"cash",text:t("methodCash")}));
-  cards.forEach(c=>mSel.appendChild(h("option",{value:c.id,text:c.name||t("sec_card")})));
+  cards.forEach(c=>mSel.appendChild(h("option",{value:c.id,"data-cid":c.id,text:c.name||t("sec_card")})));
   if(!S.draft.mSet)S.draft.m=s.defm||"cash";
   if(S.draft.m!=="cash"&&!cards.some(c=>c.id===S.draft.m))S.draft.m="cash";
   mSel.value=S.draft.m;
@@ -597,7 +597,7 @@ function spendBody(s){
       h("span",{class:"daysum"+(dailyCap&&sum>dailyCap?" amber":""),text:fmt(sum)})));
     m[d].forEach(e=>list.appendChild(h("div",{class:"exprow"},
       h("span",{class:"explbl",text:e.label}),
-      isCash(e)?null:h("span",{class:"badge",text:(cardName(e.m)||t("sec_card"))+(e.tk>1?" ×"+e.tk:"")}),
+      isCash(e)?null:h("span",{class:"badge","data-cid":e.m,"data-tk":e.tk||1,text:(cardName(e.m)||t("sec_card"))+(e.tk>1?" ×"+e.tk:"")}),
       h("span",{class:"expamt",text:fmt(e.amount)}),
       xBtn(()=>{s.expenses=s.expenses.filter(x=>x.id!==e.id);flushSave();render();}))));
   });
@@ -763,6 +763,15 @@ function refresh(){
       const m=document.getElementById("m-"+r.id);
       if(m)m.className="months "+(r.alloc?"":"warnx");
     });
+  });
+
+  document.querySelectorAll("option[data-cid]").forEach(o=>{
+    const c=S.data.sections.filter(x=>x.id===o.getAttribute("data-cid"))[0];
+    if(c){const n=c.name||t("sec_card");if(o.textContent!==n)o.textContent=n;}
+  });
+  document.querySelectorAll(".badge[data-cid]").forEach(b=>{
+    const c=S.data.sections.filter(x=>x.id===b.getAttribute("data-cid"))[0];
+    if(c)b.textContent=(c.name||t("sec_card"))+(b.getAttribute("data-tk")>1?" ×"+b.getAttribute("data-tk"):"");
   });
 
   const hero=document.getElementById("hero");

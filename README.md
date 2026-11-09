@@ -82,7 +82,7 @@ Bağımlılık yok, derleme adımı yok. `index.html` doğrudan tarayıcıda aç
 `index.html` değiştirildiğinde `sw.js` içindeki
 
 ```js
-const CACHE = "dongu-v7";
+const CACHE = "dongu-v8";
 ```
 
 satırındaki sürüm numarası bir artırılmalı (`dongu-v8`, sonra `v9`…). Yoksa cihazlar eski sürümü göstermeye devam eder.
