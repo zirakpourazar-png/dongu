@@ -24,7 +24,9 @@ Kağıt üzerinde tutulan aylık bütçe defterinin dijital karşılığı: ayn�
 
 Bilinçli olarak "planın önünde/gerisindesin" gibi bir tempo göstergesi yok. Öyle bir oran ancak döngünün ilk gününden itibaren her harcama kaydedilirse doğru olur; bir gün atlandığında program bunu "harcamadı" sayar ve yanıltır.
 
-**Kart ayrı bir havuzdur.** Harcama girerken nakit mi kartla mı aldığını seçersin. Kartla alınan şey o ayın nakdinden düşmez — kartın limitinden düşer ve bir sonraki döngünün "ödenecek" satırına geçer. Alt özette iki rakam durur: *Kalan (nakit)* ve *karta binen*.
+**Kart ayrı bir havuzdur.** Hem günlük harcamalarda hem sabit giderlerde nakit mi kartla mı ödediğini seçersin. Kartla ödenen şey o ayın nakdinden düşmez — kartın limitinden düşer ve bir sonraki döngünün "bu ay ödenecek" satırına geçer. Alt özette iki rakam durur: *Kalan (nakit)* ve *karta binen*.
+
+Sabit gider satırlarındaki seçim ancak bir kart eklenmişse görünür. Karta bağlanan sabit gider her döngüde kartı yeniden yükler — faturan karttan otomatik ödeniyorsa gerçekte de böyle olur. O satırın tutarı bölüm toplamından çıkar, parantezin altında *+6.000 kartta* diye ayrı gösterilir.
 
 Kart bölümü iki parçadır. Üstte **limit**: büyük rakam şu an harcayabileceğin tutar, altında dönem başı boşta olan ve bu dönem harcanan. Altta **ödeme**: bu ay ödenecek, ödedim, gelecek ay ödenecek, sonraki aylara kalan.
 
@@ -80,7 +82,7 @@ Bağımlılık yok, derleme adımı yok. `index.html` doğrudan tarayıcıda aç
 `index.html` değiştirildiğinde `sw.js` içindeki
 
 ```js
-const CACHE = "dongu-v6";
+const CACHE = "dongu-v7";
 ```
 
-satırındaki sürüm numarası bir artırılmalı (`dongu-v7`, sonra `v8`…). Yoksa cihazlar eski sürümü göstermeye devam eder.
+satırındaki sürüm numarası bir artırılmalı (`dongu-v8`, sonra `v9`…). Yoksa cihazlar eski sürümü göstermeye devam eder.
