@@ -55,12 +55,13 @@ input::placeholder{color:var(--faint)}
 .w.amber{border-color:var(--amber)}.w.red{border-color:var(--red)}
 
 #secs{margin-top:16px}
-.sec{margin-bottom:24px}
-.sechead{display:flex;align-items:center;gap:6px;margin-bottom:6px}
-.dot{width:6px;height:6px;border-radius:3px;flex:0 0 auto;background:var(--dim)}
+.sec{margin-bottom:0;padding:20px 0 22px;border-top:1px solid var(--line)}
+#secs .sec:first-child{padding-top:4px;border-top:none}
+.sechead{display:flex;align-items:center;gap:7px;margin-bottom:10px}
+.dot{width:7px;height:7px;border-radius:4px;flex:0 0 auto;background:var(--dim)}
 .dot.good{background:var(--good)}.dot.blue{background:var(--blue)}.dot.amber{background:var(--amber)}
 .txt{flex:1;min-width:0;background:transparent;border:none;color:var(--ink);font:400 15px var(--sans);padding:2px 0;outline:none}
-.txt.secname{font:600 13px var(--sans);color:var(--dim)}
+.txt.secname{font:600 15px var(--sans);color:var(--ink);letter-spacing:.01em}
 .num{background:transparent;border:none;border-bottom:1px dashed var(--line);color:var(--ink);
   font:500 15px var(--mono);font-variant-numeric:tabular-nums;text-align:right;padding:2px 0;outline:none}
 .num.faint{color:var(--faint)}.num.amber{color:var(--amber)}
@@ -99,7 +100,7 @@ input::placeholder{color:var(--faint)}
 .expamt{font:400 15px var(--mono);color:var(--dim);font-variant-numeric:tabular-nums}
 .spendtot{display:flex;justify-content:flex-end;gap:10px;align-items:baseline;padding-top:8px;margin-top:6px;border-top:1px solid var(--panel)}
 
-.addsec{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:22px}
+.addsec{display:flex;gap:6px;flex-wrap:wrap;margin:18px 0 22px;padding-top:18px;border-top:1px solid var(--line)}
 .foot{border-top:1px solid var(--line);padding-top:12px}
 .footrow{display:flex;justify-content:space-between;padding:3px 0}
 .footamt{font:400 15px var(--mono);color:var(--dim);font-variant-numeric:tabular-nums}
@@ -186,6 +187,11 @@ input::placeholder{color:var(--faint)}
 .row.done .txt{color:var(--faint);text-decoration:line-through}
 .row.done .num{color:var(--faint)}
 .row.done .sel{opacity:.5}
+
+.row.carryrow{flex-direction:column;align-items:stretch;gap:5px}
+.carrytop{display:flex;align-items:center;gap:7px}
+.carrybot{display:flex;align-items:center;gap:10px;padding-left:24px}
+.txt{min-width:60px}
 
 </style>
 </head>
@@ -613,14 +619,16 @@ function bracketBody(s){
   };
   s.rows.forEach(r=>{
     if(s.kind==="carry"){
-      rows.appendChild(h("div",{class:"row"+(r.done?" done":"")},
-        tick(r),
-        textInput(()=>r.label,v=>{r.label=v;},t("item")),
-        h("span",{class:"months "+(r.alloc?"":"warnx"),id:"m-"+r.id,text:t("cycleN",r.months)}),
-        numInput(()=>r.balance||0,v=>{r.balance=v;},64,"faint"),
-        h("span",{class:"arrow",text:"→"}),
-        numInput(()=>r.alloc||0,v=>{r.alloc=v;},64,"amber"),
-        xBtn(()=>{s.rows=s.rows.filter(y=>y.id!==r.id);scheduleSave();render();})));
+      rows.appendChild(h("div",{class:"row carryrow"+(r.done?" done":"")},
+        h("div",{class:"carrytop"},
+          tick(r),
+          textInput(()=>r.label,v=>{r.label=v;},t("item")),
+          h("span",{class:"months "+(r.alloc?"":"warnx"),id:"m-"+r.id,text:t("cycleN",r.months)}),
+          xBtn(()=>{s.rows=s.rows.filter(y=>y.id!==r.id);scheduleSave();render();})),
+        h("div",{class:"carrybot"},
+          numInput(()=>r.balance||0,v=>{r.balance=v;},84,"faint"),
+          h("span",{class:"arrow",text:"→"}),
+          numInput(()=>r.alloc||0,v=>{r.alloc=v;},84,"amber"))));
     }else{
       const row=h("div",{class:"row"+(r.done?" done":"")},
         tick(r),
