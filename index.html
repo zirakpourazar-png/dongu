@@ -215,7 +215,7 @@ const L={
   capHead:"Aylık tavan", capTotal:"toplam", splitLine:(a,b)=>"nakit "+a+" · kart "+b,
   capCash:"nakit tavan", capCardL:"kart tavan", spentLbl:"harcanan", editLbl:"Düzenle", dateLbl:"tarih",
   feeLbl:"masraf", feeHint:"aidat, gecikme, avans ücreti",
-  rateLbl:"faiz", rateHint:"aylık oran · ödenmeyen bakiyeye",
+  rateLbl:"faiz", rateHint:"oranı gir ya da tutarı elle yaz", rateManual:"elle girildi · oranı değiştirince hesaba döner",
   tkTotalLbl:"taksit toplamı", vadeFarki:v=>"vade farkı "+v,
   cardDue:"bu ay ödenecek", cardDueHint:"ekstrende yazan",
   cardPaid:"ödedim", cardPaidHint:"nakitten düşer",
@@ -254,7 +254,7 @@ const L={
   capHead:"Monthly cap", capTotal:"total", splitLine:(a,b)=>"cash "+a+" · card "+b,
   capCash:"cash cap", capCardL:"card cap", spentLbl:"spent", editLbl:"Edit", dateLbl:"date",
   feeLbl:"fees", feeHint:"annual fee, late charge, advance",
-  rateLbl:"interest", rateHint:"monthly rate · on unpaid balance",
+  rateLbl:"interest", rateHint:"enter a rate or type the amount", rateManual:"entered by hand · changing the rate restores auto",
   tkTotalLbl:"instalment total", vadeFarki:v=>"interest "+v,
   cardDue:"due this month", cardDueHint:"from your statement",
   cardPaid:"I paid", cardPaidHint:"comes out of cash",
@@ -342,7 +342,7 @@ function cardBlocked(data,cardId){           // bu dongude karta binen her sey, 
 }
 const instTotal=e=>(e.tkTotal&&e.tkTotal>0)?e.tkTotal:(e.amount||0);
 const cardUnpaid=c=>Math.max(0,(c.debt||0)-(c.pay||0));
-const cardInterest=c=>cardUnpaid(c)*((c.rate||0)/100);
+const cardInterest=c=>(c.intAmt||0)>0?c.intAmt:cardUnpaid(c)*((c.rate||0)/100);
 const cardAvail=(data,c)=>(c.avail||0)-cardBlocked(data,c.id)+(c.pay||0);
 const cardNext=(data,c)=>cardCharge(data,c.id)+instDue(c)+(c.fee||0)+cardInterest(c);
 const secTotal=s=>{
@@ -375,7 +375,7 @@ const secOnCard=s=>{
 const newSection=k=>k==="spend"
   ?{id:uid(),kind:k,name:t(KINDS[k].key),cap:0,capCard:0,defm:"cash",expenses:[],rows:[]}
   :k==="card"
-  ?{id:uid(),kind:k,name:t(KINDS[k].key),limit:0,avail:0,debt:0,pay:0,fee:0,rate:0,plans:[],rows:[]}
+  ?{id:uid(),kind:k,name:t(KINDS[k].key),limit:0,avail:0,debt:0,pay:0,fee:0,rate:0,intAmt:0,plans:[],rows:[]}
   :{id:uid(),kind:k,name:t(KINDS[k].key),rows:[]};
 
 const SEED=()=>({sections:[
@@ -394,7 +394,7 @@ const rollover=prev=>({sections:prev.sections.map(s=>{
     id:s.id,
     debt:cardUnpaid(s)+cardNext(prev,s),
     avail:cardAvail(prev,s)-cardInterest(s),
-    pay:0, fee:0,
+    pay:0, fee:0, intAmt:0,
     plans:(s.plans||[]).map(p=>Object.assign({},p,{paid:(p.paid||0)+1})).filter(p=>p.paid<p.n)});
   if(s.kind==="carry")return Object.assign({},s,{id:uid(),rows:s.rows.map(r=>({
     id:uid(),label:r.label,balance:Math.max(0,(r.balance||0)-(r.alloc||0)),
@@ -751,10 +751,11 @@ function cardBody(s){
   rows.appendChild(h("div",{class:"cardline inp"},
     h("span",{class:"lblwrap"},
       h("span",{class:"mini",text:t("rateLbl")}),
-      h("span",{class:"sublbl",text:t("rateHint")})),
-    rateInput(()=>s.rate||0,v=>{s.rate=v;}),
+      h("span",{class:"sublbl",id:"rh-"+s.id,
+        text:(s.intAmt||0)>0?t("rateManual"):t("rateHint")})),
+    rateInput(()=>s.rate||0,v=>{s.rate=v;s.intAmt=0;}),
     h("span",{class:"pct",text:"%"}),
-    h("span",{class:"cardval amber",id:"int-"+s.id,text:fmt(cardInterest(s))})));
+    (function(){const ia=numInput(()=>cardInterest(s),v=>{s.intAmt=v;},92,"amber");ia.id="ia-"+s.id;return ia;})()));
   rows.appendChild(line(t("onCard"),cardNext(S.data,s),"amber","onc-"+s.id));
   rows.appendChild(line(t("futureInst"),instFuture(s),"faint","fut-"+s.id));
 
@@ -882,8 +883,10 @@ function refresh(){
       if(b)b.textContent=fmt(cardBlocked(S.data,s.id));
       const o=document.getElementById("onc-"+s.id);
       if(o)o.textContent=fmt(cardNext(S.data,s));
-      const it=document.getElementById("int-"+s.id);
-      if(it)it.textContent=fmt(cardInterest(s));
+      const rh=document.getElementById("rh-"+s.id);
+      if(rh)rh.textContent=(s.intAmt||0)>0?t("rateManual"):t("rateHint");
+      const ia=document.getElementById("ia-"+s.id);
+      if(ia&&document.activeElement!==ia)ia.value=fmt(cardInterest(s));
       const fu=document.getElementById("fut-"+s.id);
       if(fu)fu.textContent=fmt(instFuture(s));
       (s.plans||[]).forEach(p=>{

@@ -42,7 +42,8 @@ Kart bölümü iki parçadır. Üstte **limit**: büyük rakam şu an harcayabil
 
 **Faiz ve masraflar üç yerde tutulur, hepsi ayrı görünür:**
 
-- **faiz** — aylık oranı bir kez girersin. Her döngüde ödenmeyen bakiye (bu ay ödenecek − ödedim) üzerinden hesaplanır, yanındaki tutarda canlı görünür. Döngü kapanınca gelecek ayın borcuna eklenir ve kalan limitten düşer. Ekstreyi tam ödüyorsan sıfır kalır.
+- **faiz** — iki yoldan girilir. Aylık oranı yazarsan her döngüde ödenmeyen bakiye (bu ay ödenecek − ödedim) üzerinden kendisi hesaplar. Bankanın kestiği gerçek rakam farklıysa sağdaki tutarı doğrudan yazarsın; altındaki not *elle girildi* olur ve o tutar geçerli sayılır. Oranı değiştirince hesaba geri döner, tutara 0 yazmak da aynı işi görür. Elle girilen faiz o döngüye aittir, yeni döngüde sıfırlanır; oran devreder.
+  Her iki durumda da faiz döngü kapanınca gelecek ayın borcuna eklenir ve kalan limitten düşer. Ekstreyi tam ödüyorsan sıfır kalır.
 - **masraf** — kart aidatı, gecikme, nakit avans ücreti gibi tek seferlik kalemler. O döngüde limitten düşer, gelecek ayın borcuna geçer, her yeni döngüde sıfırlanır.
 - **taksit toplamı** — taksitli bir alışverişte `⋯` panelinden gerçekte ödeyeceğin toplamı girersin (6.000'lik mal için 6.600 gibi). Taksitler bu toplam üzerinden bölünür, aradaki fark *vade farkı* olarak yazar.
 
@@ -96,7 +97,7 @@ Bağımlılık yok, derleme adımı yok. `index.html` doğrudan tarayıcıda aç
 `index.html` değiştirildiğinde `sw.js` içindeki
 
 ```js
-const CACHE = "dongu-v11";
+const CACHE = "dongu-v12";
 ```
 
 satırındaki sürüm numarası bir artırılmalı (`dongu-v8`, sonra `v9`…). Yoksa cihazlar eski sürümü göstermeye devam eder.
