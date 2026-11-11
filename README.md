@@ -65,6 +65,14 @@ Asgari ödeme tutarı bilinçli olarak yok. Asgari ödemek kalan bakiyeye faiz i
 
 Devir **kopyalamadır**: aylar birbirinden bağımsızdır, birinde yaptığın değişiklik diğerini etkilemez. Tek istisna kart ve biriken borçlardır; onlar zincirleme devam eder.
 
+## Veri yapıştırma
+
+Ayarlar'da **Veri yapıştır** alanı var. Claude'dan alınan JSON bloğu buraya yapıştırılıp **Yükle**'ye basılır; döngü o bloktaki bölümlerle dolar. Kağıda yazılmış bir ayı elle girmek yerine fotoğrafını Claude'a gönderip bloğu almak içindir.
+
+Mevcut döngünün üzerine yazar; hemen ardından **Geri al** düğmesi çıkar ve eski hale döner. Blok bozuksa hiçbir şeye dokunmaz, sadece uyarır.
+
+İki biçim kabul eder: tek bir döngü (`{"dongu":"2026-11","sections":[...]}`) veya tam yedek dosyasının içeriği (`pd:` ile başlayan anahtarlar).
+
 ## Dil
 
 Arayüz Türkçe ve İngilizce. Ayarlar → Dil → TR / EN. Seçim kaydedilir, uygulama o dille açılır.
@@ -103,7 +111,7 @@ Bağımlılık yok, derleme adımı yok. `index.html` doğrudan tarayıcıda aç
 `index.html` değiştirildiğinde `sw.js` içindeki
 
 ```js
-const CACHE = "dongu-v16";
+const CACHE = "dongu-v17";
 ```
 
 satırındaki sürüm numarası bir artırılmalı (`dongu-v8`, sonra `v9`…). Yoksa cihazlar eski sürümü göstermeye devam eder.

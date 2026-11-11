@@ -203,6 +203,11 @@ input::placeholder{color:var(--faint)}
 .sec.dropbelow{box-shadow:0 3px 0 -1px var(--blue)}
 .sec .rows,.sec .cardtop,.sec .capbox,.sec .form{margin-left:2px}
 
+.paste{width:100%;margin-top:6px;background:var(--panel);color:var(--ink);border:1px solid var(--line);
+  border-radius:8px;padding:8px 10px;font:400 12px var(--mono);outline:none;resize:vertical;min-height:62px}
+.paste::placeholder{color:var(--faint)}
+.paste:focus{border-color:var(--blue)}
+
 </style>
 </head>
 <body>
@@ -243,6 +248,10 @@ const L={
   rateLbl:"faiz", rateHint:"oranı gir ya da tutarı elle yaz", rateManual:"elle girildi · oranı değiştirince hesaba döner",
   tkTotalLbl:"taksit toplamı", vadeFarki:v=>"vade farkı "+v,
   doneMark:"işaretle", allDone:"tamam",
+  pasteHead:"Veri yapıştır", pastePh:"Claude'un verdiği veri bloğunu buraya yapıştır",
+  pasteLoad:"Yükle", pasteUndo:"Geri al", pasteBad:"Veri okunamadı — blok eksik kopyalanmış olabilir.",
+  pasteOk:n=>n+" bölüm yüklendi", pasteUndone:"Geri alındı",
+  pasteHint:"Mevcut döngünün üzerine yazar. Yüklemeden hemen sonra geri alabilirsin.",
   pending_in:v=>"bekleyen "+v, pending_out:v=>"ödenmemiş "+v, pending_carry:v=>"ödenmemiş "+v,
   cardDue:"bu ay ödenecek", cardDueHint:"ekstrende yazan",
   cardPaid:"ödedim", cardPaidHint:"nakitten düşer",
@@ -284,6 +293,10 @@ const L={
   rateLbl:"interest", rateHint:"enter a rate or type the amount", rateManual:"entered by hand · changing the rate restores auto",
   tkTotalLbl:"instalment total", vadeFarki:v=>"interest "+v,
   doneMark:"mark done", allDone:"all done",
+  pasteHead:"Paste data", pastePh:"Paste the data block Claude gave you",
+  pasteLoad:"Load", pasteUndo:"Undo", pasteBad:"Could not read the data — the block may be incomplete.",
+  pasteOk:n=>n+" sections loaded", pasteUndone:"Undone",
+  pasteHint:"Overwrites the current cycle. You can undo right after loading.",
   pending_in:v=>v+" pending", pending_out:v=>v+" unpaid", pending_carry:v=>v+" unpaid",
   cardDue:"due this month", cardDueHint:"from your statement",
   cardPaid:"I paid", cardPaidHint:"comes out of cash",
@@ -383,7 +396,7 @@ const secTotal=s=>{
 };
 const capTotal=s=>(s.cap||0)+(s.capCard||0);
 const rowAmt=(s,r)=>s.kind==="carry"?(r.alloc||0):(r.amount||0);
-const pendingTotal=s=>(s.rows||[]).reduce((a,r)=>a+(r.done?0:rowAmt(s,r)),0);
+const pendingTotal=s=>(s.rows||[]).reduce((a,r)=>a+((r.done||(s.kind==="out"&&!isCash(r)))?0:rowAmt(s,r)),0);
 function subNote(s){
   const parts=[];
   if(s.kind==="out"||s.kind==="in"||s.kind==="carry"){
@@ -448,7 +461,7 @@ const rollover=prev=>({sections:prev.sections.map(s=>{
 })});
 
 /* ---------- state ---------- */
-const S={editing:null,startDay:7,lang:"tr",id:null,data:null,draft:{date:iso(new Date()),label:"",amount:"",m:"cash",tk:1},settingsOpen:false,status:""};
+const S={editing:null,undo:null,startDay:7,lang:"tr",id:null,data:null,draft:{date:iso(new Date()),label:"",amount:"",m:"cash",tk:1},settingsOpen:false,status:""};
 
 function loadSettings(){
   const raw=LS.get("pd:settings");
@@ -900,6 +913,38 @@ function addSecEl(){
   return box;
 }
 
+function applyPaste(txt){
+  let obj;
+  try{obj=JSON.parse(String(txt).trim());}catch(e){return {ok:false};}
+  if(!obj||typeof obj!=="object")return {ok:false};
+  // tam yedek mi?
+  const keys=Object.keys(obj).filter(k=>k.indexOf("pd:")===0);
+  S.undo={id:S.id,data:JSON.parse(JSON.stringify(S.data))};
+  if(keys.length){
+    keys.forEach(k=>LS.set(k,typeof obj[k]==="string"?obj[k]:JSON.stringify(obj[k])));
+    loadSettings();
+    S.id=cycleId(cycleStartFor(new Date(),S.startDay));
+    S.data=loadCycle(S.id);
+    return {ok:true,n:(S.data.sections||[]).length};
+  }
+  // tek dongu mu?
+  const d=obj.sections?obj:(obj.data&&obj.data.sections?obj.data:null);
+  if(!d||!Array.isArray(d.sections))return {ok:false};
+  const valid=["in","out","carry","spend","card"];
+  const secs=d.sections.filter(x=>x&&valid.indexOf(x.kind)>-1).map(x=>{
+    const o=Object.assign({},x);
+    o.id=o.id||uid();
+    o.rows=Array.isArray(o.rows)?o.rows.map(r=>Object.assign({},r,{id:r.id||uid()})):[];
+    if(o.kind==="spend")o.expenses=Array.isArray(o.expenses)?o.expenses.map(e=>Object.assign({},e,{id:e.id||uid()})):[];
+    if(o.kind==="card")o.plans=Array.isArray(o.plans)?o.plans.map(pp=>Object.assign({},pp,{id:pp.id||uid()})):[];
+    return o;
+  });
+  if(!secs.length)return {ok:false};
+  if(obj.dongu&&/^\d{4}-\d{2}$/.test(obj.dongu))S.id=obj.dongu;
+  S.data={sections:secs};
+  return {ok:true,n:secs.length};
+}
+
 function settingsEl(){
   const body=h("div",{id:"setbody",style:{display:S.settingsOpen?"block":"none"}});
   const sel=h("select",{class:"sel"});
@@ -935,6 +980,31 @@ function settingsEl(){
     h("button",{class:"ghost",text:t("backupPut"),onclick:()=>fileI.click()}),
     fileI));
   body.appendChild(h("div",{class:"hint",text:t("backupHint")}));
+
+  body.appendChild(h("div",{class:"caphead",style:{marginTop:"16px"}},h("span",{text:t("pasteHead")})));
+  const ta=h("textarea",{class:"paste",rows:"3",placeholder:t("pastePh")});
+  const msg=h("div",{class:"hint",id:"pastemsg"});
+  const undoBtn=h("button",{class:"ghost",text:t("pasteUndo"),style:{display:"none"},onclick:()=>{
+    if(!S.undo)return;
+    S.id=S.undo.id;S.data=S.undo.data;S.undo=null;
+    flushSave();render();
+    const m=document.getElementById("pastemsg");if(m)m.textContent=t("pasteUndone");
+  }});
+  body.appendChild(ta);
+  body.appendChild(h("div",{class:"setrow"},
+    h("button",{class:"ghost",text:t("pasteLoad"),onclick:()=>{
+      const r=applyPaste(ta.value);
+      if(!r.ok){msg.textContent=t("pasteBad");return;}
+      S.settingsOpen=true;
+      flushSave();render();
+      const m=document.getElementById("pastemsg");
+      if(m)m.textContent=t("pasteOk",r.n);
+      const u=document.getElementById("pasteundo");
+      if(u)u.style.display="";
+    }}),
+    (function(){undoBtn.id="pasteundo";return undoBtn;})()));
+  body.appendChild(msg);
+  body.appendChild(h("div",{class:"hint",text:t("pasteHint")}));
 
   const toggle=h("button",{class:"settoggle",text:t("settings")+" +",onclick:function(){
     S.settingsOpen=!S.settingsOpen;
