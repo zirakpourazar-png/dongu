@@ -55,9 +55,10 @@ input::placeholder{color:var(--faint)}
 .w.amber{border-color:var(--amber)}.w.red{border-color:var(--red)}
 
 #secs{margin-top:16px}
-.sec{margin-bottom:0;padding:20px 0 22px;border-top:1px solid var(--line)}
-#secs .sec:first-child{padding-top:4px;border-top:none}
-.sechead{display:flex;align-items:center;gap:7px;margin-bottom:10px}
+.sec{margin:0 0 18px;padding:0 0 14px}
+#secs{margin-top:18px}
+.sechead{display:flex;align-items:center;gap:7px;margin-bottom:10px;
+  background:var(--panel);border-radius:8px;padding:8px 10px}
 .dot{width:7px;height:7px;border-radius:4px;flex:0 0 auto;background:var(--dim)}
 .dot.good{background:var(--good)}.dot.blue{background:var(--blue)}.dot.amber{background:var(--amber)}
 .txt{flex:1;min-width:0;background:transparent;border:none;color:var(--ink);font:400 15px var(--sans);padding:2px 0;outline:none}
@@ -192,6 +193,15 @@ input::placeholder{color:var(--faint)}
 .carrytop{display:flex;align-items:center;gap:7px}
 .carrybot{display:flex;align-items:center;gap:10px;padding-left:24px}
 .txt{min-width:60px}
+
+.grip{background:none;border:none;color:var(--faint);font:400 15px var(--sans);
+  cursor:grab;padding:2px 4px;touch-action:none;line-height:1}
+.grip:active{cursor:grabbing;color:var(--ink)}
+.sec.dragging{opacity:.9;position:relative;z-index:5}
+.sec.dragging .sechead{background:var(--panelhi);box-shadow:0 6px 20px rgba(0,0,0,.45)}
+.sec.dropabove{box-shadow:0 -3px 0 -1px var(--blue)}
+.sec.dropbelow{box-shadow:0 3px 0 -1px var(--blue)}
+.sec .rows,.sec .cardtop,.sec .capbox,.sec .form{margin-left:2px}
 
 </style>
 </head>
@@ -354,7 +364,7 @@ function cardCharge(data,cardId){            // gelecek aya gecen: tek cekimler 
 function cardBlocked(data,cardId){           // bu dongude karta binen her sey, tam tutar
   let v=fixedOnCard(data,cardId);
   const c=data.sections.filter(x=>x.id===cardId)[0];
-  if(c)v+=c.fee||0;
+  if(c)v+=(c.fee||0)+cardInterest(c);
   data.sections.forEach(sec=>{ if(sec.kind==="spend")sec.expenses.forEach(e=>{
     if(e.m===cardId)v+=((e.tk||1)>1?instTotal(e):(e.amount||0));});});
   return v;
@@ -428,7 +438,7 @@ const rollover=prev=>({sections:prev.sections.map(s=>{
   if(s.kind==="card")return Object.assign({},s,{
     id:s.id,
     debt:cardUnpaid(s)+cardNext(prev,s),
-    avail:cardAvail(prev,s)-cardInterest(s),
+    avail:cardAvail(prev,s),
     pay:0, fee:0, intAmt:0,
     plans:(s.plans||[]).map(p=>Object.assign({},p,{paid:(p.paid||0)+1})).filter(p=>p.paid<p.n)});
   if(s.kind==="carry")return Object.assign({},s,{id:uid(),rows:s.rows.map(r=>({
@@ -565,6 +575,51 @@ function secsEl(){
   return box;
 }
 
+let drag=null;
+function startDrag(ev,idx){
+  if(drag)return;
+  ev.preventDefault();
+  const secs=[].slice.call(document.querySelectorAll("#secs > .sec"));
+  const el=secs[idx]; if(!el)return;
+  drag={idx:idx,target:idx,el:el,secs:secs,startY:ev.clientY,
+    centers:secs.map(function(x){const r=x.getBoundingClientRect();return r.top+r.height/2;})};
+  el.classList.add("dragging");
+  try{ev.target.setPointerCapture(ev.pointerId);}catch(e){}
+  window.addEventListener("pointermove",onDragMove);
+  window.addEventListener("pointerup",onDragEnd,{once:true});
+  window.addEventListener("pointercancel",onDragEnd,{once:true});
+}
+function onDragMove(ev){
+  if(!drag)return;
+  const off=ev.clientY-drag.startY;
+  drag.el.style.transform="translateY("+off+"px)";
+  const cur=drag.centers[drag.idx]+off;
+  let tg=drag.idx;
+  for(let i=0;i<drag.centers.length;i++){
+    if(i===drag.idx)continue;
+    if(i<drag.idx&&cur<drag.centers[i])tg=Math.min(tg,i);
+    if(i>drag.idx&&cur>drag.centers[i])tg=Math.max(tg,i);
+  }
+  drag.target=tg;
+  drag.secs.forEach(function(x,i){
+    x.classList.toggle("dropabove",i===tg&&tg<drag.idx);
+    x.classList.toggle("dropbelow",i===tg&&tg>drag.idx);});
+}
+function onDragEnd(){
+  window.removeEventListener("pointermove",onDragMove);
+  if(!drag)return;
+  const d=drag; drag=null;
+  d.el.style.transform="";
+  d.secs.forEach(function(x){x.classList.remove("dragging","dropabove","dropbelow");});
+  if(d.target!==d.idx){
+    const a=S.data.sections.slice();
+    const m=a.splice(d.idx,1)[0];
+    a.splice(d.target,0,m);
+    S.data.sections=a;
+    flushSave();
+  }
+  render();
+}
 function moveUp(idx){
   if(idx<=0)return;
   const a=S.data.sections.slice();
@@ -593,7 +648,12 @@ function sectionEl(s,idx){
       s.rows.push(s.kind==="carry"?{id:uid(),label:"",balance:0,alloc:0,months:1}:{id:uid(),label:"",amount:0});
       scheduleSave();render();}}));
   }
-  head.appendChild(h("button",{class:"nav sm","aria-label":t("moveUp"),onclick:()=>moveUp(idx),text:"↑"}));
+  const grip=h("button",{class:"grip","aria-label":t("moveUp"),text:"⠿"});
+  grip.addEventListener("pointerdown",ev=>startDrag(ev,idx));
+  grip.addEventListener("click",ev=>{ev.preventDefault();});
+  grip.addEventListener("keydown",ev=>{if(ev.key==="ArrowUp"){ev.preventDefault();moveUp(idx);}
+    else if(ev.key==="ArrowDown"){ev.preventDefault();moveUp(idx+1);}});
+  head.appendChild(grip);
   head.appendChild(xBtn(()=>{
     if(s.kind==="card")S.data.sections.forEach(sec=>{
       if(sec.kind==="spend"){
