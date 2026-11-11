@@ -20,7 +20,11 @@ Kağıt üzerinde tutulan aylık bütçe defterinin dijital karşılığı: ayn�
 
 **Biriken bölümü iki sütunludur:** solda kalan borç, sağda bu döngüde ödenecek tutar. Sağ sütunu boş bırakırsan satır "2. döngü", "3. döngü" diye saymaya başlar ve uyarı çıkar. Ertelenen kalemin kaç aydır ertelendiğini görmek bunun tek amacı.
 
-**Üstteki büyük rakam** kalan günler için günlük harcama limiti: kalan tavan ÷ kalan gün. Harcadıkça aşağı iner, harcamadığın gün yukarı çıkar. Tavan aşılırsa eksiye düşer ve kırmızıya döner.
+**Tavan nakit ve kart olarak ikiye bölünür.** Harcama bölümünün altındaki tablodan ikisini ayrı girersin; toplam ikisinin toplamıdır. Kart satırı yalnızca bir kart eklenmişse görünür.
+
+Belirleyici olan toplamdır. Nakit payını aşıp kart payından artırdıysan toplam hâlâ tutuyorsa uyarı çıkmaz — ilgili satır sarıya döner, o kadar. Kırmızı uyarı yalnızca toplam tavan aşılınca gelir, iki taraf birbirinden ödünç alabilir.
+
+**Üstteki büyük rakam** kalan günler için günlük harcama limiti: kalan toplam tavan ÷ kalan gün, ödeme yöntemi fark etmeksizin. Harcadıkça aşağı iner, harcamadığın gün yukarı çıkar. Toplam tavan aşılırsa eksiye düşer ve kırmızıya döner. Altındaki satır nakit ve kart paylarının ayrı ayrı nerede olduğunu gösterir.
 
 Bilinçli olarak "planın önünde/gerisindesin" gibi bir tempo göstergesi yok. Öyle bir oran ancak döngünün ilk gününden itibaren her harcama kaydedilirse doğru olur; bir gün atlandığında program bunu "harcamadı" sayar ve yanıltır.
 
@@ -82,7 +86,7 @@ Bağımlılık yok, derleme adımı yok. `index.html` doğrudan tarayıcıda aç
 `index.html` değiştirildiğinde `sw.js` içindeki
 
 ```js
-const CACHE = "dongu-v8";
+const CACHE = "dongu-v9";
 ```
 
 satırındaki sürüm numarası bir artırılmalı (`dongu-v8`, sonra `v9`…). Yoksa cihazlar eski sürümü göstermeye devam eder.

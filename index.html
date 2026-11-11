@@ -148,6 +148,17 @@ input::placeholder{color:var(--faint)}
 .cardline.inp .num.good{border-bottom-color:var(--good)}
 .sel.sm.rowm{max-width:84px;color:var(--dim)}
 
+.caphead{font:600 11px var(--sans);color:var(--faint);letter-spacing:.06em;text-transform:uppercase;margin:14px 0 4px}
+.captbl{border-top:1px solid var(--panel)}
+.caprow{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--panel)}
+.caprow.tot{border-bottom:none;border-top:1px solid var(--line);margin-top:2px}
+.caplbl{flex:1;min-width:0}
+.capspent{font:600 16px var(--mono);font-variant-numeric:tabular-nums;color:var(--ink);text-align:right;min-width:72px}
+.capspent.amber{color:var(--amber)}
+.capsep{color:var(--faint);font:400 13px var(--mono)}
+.captot{font:500 15px var(--mono);font-variant-numeric:tabular-nums;color:var(--dim);width:80px;text-align:right}
+.caprow.tot .capspent{color:var(--blue)}
+
 </style>
 </head>
 <body>
@@ -182,6 +193,7 @@ const L={
   availLbl:"dönem başı boştaydı", blockedLbl:"bu dönem harcanan", defmLbl:"varsayılan",
   youType:"sen gir", calced:"hesaplanıyor",
   payHead:"Ödeme", plansHead:"Taksitler", onCardNote:v=>"+"+v+" kartta",
+  capHead:"Tavan", capTotal:"toplam", splitLine:(a,b)=>"nakit "+a+" · kart "+b,
   cardDue:"bu ay ödenecek", cardDueHint:"ekstrende yazan",
   cardPaid:"ödedim", cardPaidHint:"nakitten düşer",
   onCard:"gelecek ay ödenecek", onCardShort:"karta binen", futureInst:"sonraki aylara kalan",
@@ -216,6 +228,7 @@ const L={
   availLbl:"available at cycle start", blockedLbl:"spent this cycle", defmLbl:"default",
   youType:"you enter", calced:"calculated",
   payHead:"Payment", plansHead:"Instalments", onCardNote:v=>"+"+v+" on card",
+  capHead:"Cap", capTotal:"total", splitLine:(a,b)=>"cash "+a+" · card "+b,
   cardDue:"due this month", cardDueHint:"from your statement",
   cardPaid:"I paid", cardPaidHint:"comes out of cash",
   onCard:"due next month", onCardShort:"on card", futureInst:"later months",
@@ -306,13 +319,14 @@ const secTotal=s=>{
   if(s.kind==="out")return s.rows.filter(isCash).reduce((a,r)=>a+(r.amount||0),0);
   return s.rows.reduce((a,r)=>a+(r.amount||0),0);
 };
+const capTotal=s=>(s.cap||0)+(s.capCard||0);
 const secOnCard=s=>{
   if(s.kind==="spend")return s.expenses.filter(e=>!isCash(e)).reduce((a,e)=>a+(e.amount||0),0);
   if(s.kind==="out")return s.rows.filter(r=>!isCash(r)).reduce((a,r)=>a+(r.amount||0),0);
   return 0;
 };
 const newSection=k=>k==="spend"
-  ?{id:uid(),kind:k,name:t(KINDS[k].key),cap:0,defm:"cash",expenses:[],rows:[]}
+  ?{id:uid(),kind:k,name:t(KINDS[k].key),cap:0,capCard:0,defm:"cash",expenses:[],rows:[]}
   :k==="card"
   ?{id:uid(),kind:k,name:t(KINDS[k].key),limit:0,avail:0,debt:0,pay:0,plans:[],rows:[]}
   :{id:uid(),kind:k,name:t(KINDS[k].key),rows:[]};
@@ -471,8 +485,6 @@ function sectionEl(s,idx){
     h("span",{class:"dot "+k.cls}),
     textInput(()=>s.name,v=>{s.name=v;},t("secName"),"secname"));
   if(s.kind==="spend"){
-    head.appendChild(h("span",{class:"mini",text:t("cap")}));
-    head.appendChild(numInput(()=>s.cap||0,v=>{s.cap=v;},70));
     const dSel=h("select",{class:"sel sm",title:t("defmLbl")});
     dSel.appendChild(h("option",{value:"cash",text:t("methodCash")}));
     S.data.sections.filter(x=>x.kind==="card").forEach(c=>
@@ -546,7 +558,7 @@ function bracketBody(s){
 
 function spendBody(s){
   const c=ctx();
-  const dailyCap=s.cap&&c.days?s.cap/c.days:0;
+  const dailyCap=c.days?capTotal(s)/c.days:0;
   const dateI=h("input",{type:"date",class:"dt"});dateI.value=S.draft.date;
   dateI.addEventListener("input",()=>{S.draft.date=dateI.value;});
   const lblI=h("input",{class:"txt grow",placeholder:t("whatFor"),id:"draftlabel"});lblI.value=S.draft.label;
@@ -601,13 +613,23 @@ function spendBody(s){
       h("span",{class:"expamt",text:fmt(e.amount)}),
       xBtn(()=>{s.expenses=s.expenses.filter(x=>x.id!==e.id);flushSave();render();}))));
   });
+  const hasCard=S.data.sections.some(x=>x.kind==="card")||(s.capCard||0)>0;
+  const capRow=(lbl,spentVal,spentId,getCap,setCap)=>h("div",{class:"caprow"},
+    h("span",{class:"mini caplbl",text:lbl}),
+    h("span",{class:"capspent",id:spentId,text:fmt(spentVal)}),
+    h("span",{class:"capsep",text:"/"}),
+    setCap?numInput(getCap,setCap,80):h("span",{class:"captot",id:"cg-"+s.id,text:fmt(getCap())}));
+  const cash=secTotal(s), oncard=secOnCard(s);
   return h("div",{},form,list,
-    h("div",{class:"spendtot"},
-      h("span",{class:"mini",text:t("methodCash")}),
-      h("span",{class:"sub blue",id:"sub-"+s.id,text:fmt(secTotal(s))}),
-      h("span",{class:"mini",style:{marginLeft:"14px"},text:t("onCardShort")}),
-      h("span",{class:"sub amber",id:"oncard-"+s.id,
-        text:fmt(s.expenses.filter(e=>!isCash(e)).reduce((a,e)=>a+(e.amount||0),0))})));
+    h("div",{class:"caphead",text:t("capHead")}),
+    h("div",{class:"captbl"},
+      capRow(t("methodCash"),cash,"sub-"+s.id,()=>s.cap||0,v=>{s.cap=v;}),
+      hasCard?capRow(t("sec_card"),oncard,"oncard-"+s.id,()=>s.capCard||0,v=>{s.capCard=v;}):null,
+      hasCard?h("div",{class:"caprow tot"},
+        h("span",{class:"mini caplbl",text:t("capTotal")}),
+        h("span",{class:"capspent",id:"ct-"+s.id,text:fmt(cash+oncard)}),
+        h("span",{class:"capsep",text:"/"}),
+        h("span",{class:"captot",id:"cg-"+s.id,text:fmt(capTotal(s))})):null));
 }
 
 function cardBody(s){
@@ -720,8 +742,10 @@ function settingsEl(){
 function refresh(){
   const c=ctx();
   const spend=S.data.sections.filter(s=>s.kind==="spend")[0];
-  const spent=spend?secTotal(spend):0;
-  const cap=spend?(spend.cap||0):0;
+  const spentCash=spend?secTotal(spend):0;
+  const spentCard=spend?secOnCard(spend):0;
+  const spent=spentCash+spentCard;
+  const cap=spend?capTotal(spend):0;
   const capLeft=cap-spent;
   const pace=cap?(cap/c.days)*c.elapsed:0;
   const perDay=c.left>0?capLeft/c.left:capLeft;
@@ -736,6 +760,13 @@ function refresh(){
     if(s.kind==="spend"){
       const ocEl=document.getElementById("oncard-"+s.id);
       if(ocEl)ocEl.textContent=fmt(oc);
+      const ct=document.getElementById("ct-"+s.id);
+      if(ct)ct.textContent=fmt(secTotal(s)+oc);
+      const cg=document.getElementById("cg-"+s.id);
+      if(cg)cg.textContent=fmt(capTotal(s));
+      const cs=document.getElementById("sub-"+s.id);
+      if(cs)cs.className="capspent"+(secTotal(s)>(s.cap||0)&&(s.cap||0)>0?" amber":"");
+      if(ocEl)ocEl.className="capspent"+(oc>(s.capCard||0)&&(s.capCard||0)>0?" amber":"");
     }
     if(s.kind==="card"){
       const rem=cardAvail(S.data,s);
@@ -792,7 +823,8 @@ function refresh(){
         if(c.isLive)bar.appendChild(h("div",{class:"marker",style:{left:Math.min(100,(c.elapsed/c.days)*100)+"%"}}));
         return bar;
       })(),
-      null));
+      spend&&(spend.capCard||0)>0?h("div",{class:"pace"},
+        t("splitLine",fmt(spentCash)+" / "+fmt(spend.cap||0),fmt(spentCard)+" / "+fmt(spend.capCard||0))):null));
   }
 
   const warn=document.getElementById("warn");
