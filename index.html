@@ -862,10 +862,10 @@ function cardBody(s){
     h("span",{class:"pct",text:"%"}),
     (function(){const ia=numInput(()=>cardInterest(s),v=>{s.intAmt=v;},92,"amber");ia.id="ia-"+s.id;return ia;})()));
   rows.appendChild(line(t("onCard"),cardNext(S.data,s),"amber","onc-"+s.id));
-  rows.appendChild(line(t("futureInst"),instFuture(s),"faint","fut-"+s.id));
+  const hasPlans=(s.plans||[]).length>0;
+  if(hasPlans)rows.appendChild(line(t("futureInst"),instFuture(s),"faint","fut-"+s.id));
 
   const plans=h("div",{class:"plans"});
-  if(!(s.plans||[]).length)plans.appendChild(h("div",{class:"hint",text:t("noPlans")}));
   (s.plans||[]).forEach(p=>plans.appendChild(h("div",{class:"planrow"},
     h("span",{class:"planlbl",id:"pll-"+(p.eid||p.id),text:p.label||"—"}),
     h("span",{class:"hint",id:"pln-"+(p.eid||p.id),text:t("instLeft",p.n-(p.paid||0))}),
@@ -888,8 +888,8 @@ function cardBody(s){
         h("span",{class:"cardval amber",id:"blk-"+s.id,text:fmt(blocked)}))),
     h("div",{class:"grouphead",text:t("payHead")}),
     rows,
-    h("div",{class:"grouphead",text:t("plansHead")}),
-    plans);
+    hasPlans?h("div",{class:"grouphead",text:t("plansHead")}):null,
+    hasPlans?plans:null);
 }
 
 function addSecEl(){
