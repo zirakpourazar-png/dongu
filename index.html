@@ -178,6 +178,15 @@ input::placeholder{color:var(--faint)}
 .pct{color:var(--faint);font:400 13px var(--mono);margin-left:-4px}
 .cardline.inp .num.amber{border-bottom:1px dashed var(--amber)}
 
+.tick{appearance:none;-webkit-appearance:none;width:17px;height:17px;flex:0 0 auto;margin:0;
+  border:1px solid var(--line);border-radius:4px;background:transparent;cursor:pointer;position:relative}
+.tick:checked{background:var(--good);border-color:var(--good)}
+.tick:checked::after{content:"";position:absolute;left:5px;top:1px;width:4px;height:9px;
+  border:solid var(--bg);border-width:0 2px 2px 0;transform:rotate(45deg)}
+.row.done .txt{color:var(--faint);text-decoration:line-through}
+.row.done .num{color:var(--faint)}
+.row.done .sel{opacity:.5}
+
 </style>
 </head>
 <body>
@@ -217,6 +226,8 @@ const L={
   feeLbl:"masraf", feeHint:"aidat, gecikme, avans ücreti",
   rateLbl:"faiz", rateHint:"oranı gir ya da tutarı elle yaz", rateManual:"elle girildi · oranı değiştirince hesaba döner",
   tkTotalLbl:"taksit toplamı", vadeFarki:v=>"vade farkı "+v,
+  doneMark:"işaretle", allDone:"tamam",
+  pending_in:v=>"bekleyen "+v, pending_out:v=>"ödenmemiş "+v, pending_carry:v=>"ödenmemiş "+v,
   cardDue:"bu ay ödenecek", cardDueHint:"ekstrende yazan",
   cardPaid:"ödedim", cardPaidHint:"nakitten düşer",
   onCard:"gelecek ay ödenecek", onCardShort:"karta binen", futureInst:"sonraki aylara kalan",
@@ -256,6 +267,8 @@ const L={
   feeLbl:"fees", feeHint:"annual fee, late charge, advance",
   rateLbl:"interest", rateHint:"enter a rate or type the amount", rateManual:"entered by hand · changing the rate restores auto",
   tkTotalLbl:"instalment total", vadeFarki:v=>"interest "+v,
+  doneMark:"mark done", allDone:"all done",
+  pending_in:v=>v+" pending", pending_out:v=>v+" unpaid", pending_carry:v=>v+" unpaid",
   cardDue:"due this month", cardDueHint:"from your statement",
   cardPaid:"I paid", cardPaidHint:"comes out of cash",
   onCard:"due next month", onCardShort:"on card", futureInst:"later months",
@@ -353,6 +366,22 @@ const secTotal=s=>{
   return s.rows.reduce((a,r)=>a+(r.amount||0),0);
 };
 const capTotal=s=>(s.cap||0)+(s.capCard||0);
+const rowAmt=(s,r)=>s.kind==="carry"?(r.alloc||0):(r.amount||0);
+const pendingTotal=s=>(s.rows||[]).reduce((a,r)=>a+(r.done?0:rowAmt(s,r)),0);
+function subNote(s){
+  const parts=[];
+  if(s.kind==="out"||s.kind==="in"||s.kind==="carry"){
+    const total=(s.rows||[]).reduce((a,r)=>a+rowAmt(s,r),0);
+    const pend=pendingTotal(s);
+    if(total>0)parts.push(pend>0?t("pending_"+s.kind,fmt(pend)):t("allDone"));
+  }
+  if(s.kind==="out"){const oc=secOnCard(s); if(oc>0)parts.push(t("onCardNote",fmt(oc)));}
+  if(s.kind==="carry"){
+    const leftB=s.rows.reduce((a,r)=>a+Math.max(0,(r.balance||0)-(r.alloc||0)),0);
+    parts.push(leftB>0?t("carried",fmt(leftB)):t("clean"));
+  }
+  return parts.join(" · ");
+}
 function syncPlan(e){                       // harcamanin taksit planini yeniden kur
   S.data.sections.forEach(c=>{ if(c.kind==="card"&&c.plans)
     c.plans=c.plans.filter(p=>p.eid!==e.id); });
@@ -398,8 +427,8 @@ const rollover=prev=>({sections:prev.sections.map(s=>{
     plans:(s.plans||[]).map(p=>Object.assign({},p,{paid:(p.paid||0)+1})).filter(p=>p.paid<p.n)});
   if(s.kind==="carry")return Object.assign({},s,{id:uid(),rows:s.rows.map(r=>({
     id:uid(),label:r.label,balance:Math.max(0,(r.balance||0)-(r.alloc||0)),
-    alloc:0,months:(r.alloc||0)>0?1:(r.months||1)+1})).filter(r=>r.balance>0)});
-  return Object.assign({},s,{id:uid(),rows:s.rows.map(r=>Object.assign({},r,{id:uid()}))});
+    alloc:0,done:false,months:(r.alloc||0)>0?1:(r.months||1)+1})).filter(r=>r.balance>0)});
+  return Object.assign({},s,{id:uid(),rows:s.rows.map(r=>Object.assign({},r,{id:uid(),done:false}))});
 })});
 
 /* ---------- state ---------- */
@@ -576,9 +605,16 @@ function bracketBody(s){
   const k=KINDS[s.kind];
   const rows=h("div",{class:"rows"});
   if(!s.rows.length)rows.appendChild(h("div",{class:"empty",text:t("emptyRows")}));
+  const tick=r=>{
+    const b=h("input",{type:"checkbox",class:"tick","aria-label":t("doneMark")});
+    b.checked=!!r.done;
+    b.addEventListener("change",()=>{r.done=b.checked;flushSave();render();});
+    return b;
+  };
   s.rows.forEach(r=>{
     if(s.kind==="carry"){
-      rows.appendChild(h("div",{class:"row"},
+      rows.appendChild(h("div",{class:"row"+(r.done?" done":"")},
+        tick(r),
         textInput(()=>r.label,v=>{r.label=v;},t("item")),
         h("span",{class:"months "+(r.alloc?"":"warnx"),id:"m-"+r.id,text:t("cycleN",r.months)}),
         numInput(()=>r.balance||0,v=>{r.balance=v;},64,"faint"),
@@ -586,7 +622,8 @@ function bracketBody(s){
         numInput(()=>r.alloc||0,v=>{r.alloc=v;},64,"amber"),
         xBtn(()=>{s.rows=s.rows.filter(y=>y.id!==r.id);scheduleSave();render();})));
     }else{
-      const row=h("div",{class:"row"},
+      const row=h("div",{class:"row"+(r.done?" done":"")},
+        tick(r),
         textInput(()=>r.label,v=>{r.label=v;},t("item")));
       if(s.kind==="out"){
         const cards=S.data.sections.filter(x=>x.kind==="card");
@@ -611,7 +648,7 @@ function bracketBody(s){
     h("div",{class:"brace "+k.cls}),
     h("div",{class:"subtot"},
       h("div",{class:"sub "+k.cls,id:"sub-"+s.id,text:fmt(secTotal(s))}),
-      h("div",{class:"subnote",id:"note-"+s.id})));
+      h("div",{class:"subnote",id:"note-"+s.id,text:subNote(s)})));
 }
 
 function spendBody(s){
@@ -899,11 +936,7 @@ function refresh(){
     const el=document.getElementById("sub-"+s.id);
     if(el)el.textContent=fmt(secTotal(s));
     const nt=document.getElementById("note-"+s.id);
-    if(nt&&s.kind==="out")nt.textContent=oc>0?t("onCardNote",fmt(oc)):"";
-    if(nt&&s.kind==="carry"){
-      const leftB=s.rows.reduce((a,r)=>a+Math.max(0,(r.balance||0)-(r.alloc||0)),0);
-      nt.textContent=leftB>0?t("carried",fmt(leftB)):t("clean");
-    }
+    if(nt&&s.kind!=="spend"&&s.kind!=="card")nt.textContent=subNote(s);
     if(s.kind==="carry")s.rows.forEach(r=>{
       const m=document.getElementById("m-"+r.id);
       if(m)m.className="months "+(r.alloc?"":"warnx");

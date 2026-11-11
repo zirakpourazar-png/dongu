@@ -18,6 +18,10 @@ Kağıt üzerinde tutulan aylık bütçe defterinin dijital karşılığı: ayn�
 | Günlük harcama | Tavanı olan, gün gün girilen | Nakit olanı çıkarır |
 | Kart | Limit, borç, taksitler | Sadece o döngüde ödenen kısmı çıkarır |
 
+**Ödediklerini işaretlersin.** Giriş, Sabit gider ve Biriken satırlarının başında bir kutucuk var. Ödedikçe (Giriş'te: para geldikçe) işaretlersin, satır soluklaşıp üstü çizilir ve parantezin altında kalan yazar: *ödenmemiş 66.000*, hepsi bitince *tamam*. Günlük harcamada kutucuk yok — oraya zaten olan biteni yazıyorsun.
+
+İşaretlemek hiçbir toplamı değiştirmez; Kalan aynı kalır. Sadece bu ay neyi hallettiğini gösterir. İşaretler her yeni döngüde sıfırlanır.
+
 **Biriken bölümü iki sütunludur:** solda kalan borç, sağda bu döngüde ödenecek tutar. Sağ sütunu boş bırakırsan satır "2. döngü", "3. döngü" diye saymaya başlar ve uyarı çıkar. Ertelenen kalemin kaç aydır ertelendiğini görmek bunun tek amacı.
 
 **Tavan nakit ve kart olarak ikiye bölünür.** Harcama bölümünün en üstündeki *Aylık tavan* kutusundan ikisini ayrı girersin; toplam ikisinin toplamıdır. Her satırda solda harcanan, sağda tavan durur — tavan kutuları `sen gir` etiketiyle işaretlidir. Kart satırı yalnızca bir kart eklenmişse görünür.
@@ -97,7 +101,7 @@ Bağımlılık yok, derleme adımı yok. `index.html` doğrudan tarayıcıda aç
 `index.html` değiştirildiğinde `sw.js` içindeki
 
 ```js
-const CACHE = "dongu-v12";
+const CACHE = "dongu-v13";
 ```
 
 satırındaki sürüm numarası bir artırılmalı (`dongu-v8`, sonra `v9`…). Yoksa cihazlar eski sürümü göstermeye devam eder.
