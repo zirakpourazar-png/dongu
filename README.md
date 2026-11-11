@@ -20,7 +20,9 @@ Kağıt üzerinde tutulan aylık bütçe defterinin dijital karşılığı: ayn�
 
 **Biriken bölümü iki sütunludur:** solda kalan borç, sağda bu döngüde ödenecek tutar. Sağ sütunu boş bırakırsan satır "2. döngü", "3. döngü" diye saymaya başlar ve uyarı çıkar. Ertelenen kalemin kaç aydır ertelendiğini görmek bunun tek amacı.
 
-**Tavan nakit ve kart olarak ikiye bölünür.** Harcama bölümünün altındaki tablodan ikisini ayrı girersin; toplam ikisinin toplamıdır. Kart satırı yalnızca bir kart eklenmişse görünür.
+**Tavan nakit ve kart olarak ikiye bölünür.** Harcama bölümünün en üstündeki *Aylık tavan* kutusundan ikisini ayrı girersin; toplam ikisinin toplamıdır. Her satırda solda harcanan, sağda tavan durur — tavan kutuları `sen gir` etiketiyle işaretlidir. Kart satırı yalnızca bir kart eklenmişse görünür.
+
+**Girilen harcamalar sonradan düzenlenebilir.** Etiket ve tutar satır içinde doğrudan değiştirilir. Satırın sonundaki `⋯` düğmesi tarihi, ödeme yöntemini ve taksit sayısını açar. Tarihi değiştirince satır ilgili güne taşınır. Taksitli bir harcamanın tutarı, etiketi veya taksit sayısı değiştiğinde kart tarafındaki taksit planı da güncellenir; harcama silinince planı da silinir.
 
 Belirleyici olan toplamdır. Nakit payını aşıp kart payından artırdıysan toplam hâlâ tutuyorsa uyarı çıkmaz — ilgili satır sarıya döner, o kadar. Kırmızı uyarı yalnızca toplam tavan aşılınca gelir, iki taraf birbirinden ödünç alabilir.
 
@@ -86,7 +88,7 @@ Bağımlılık yok, derleme adımı yok. `index.html` doğrudan tarayıcıda aç
 `index.html` değiştirildiğinde `sw.js` içindeki
 
 ```js
-const CACHE = "dongu-v9";
+const CACHE = "dongu-v10";
 ```
 
 satırındaki sürüm numarası bir artırılmalı (`dongu-v8`, sonra `v9`…). Yoksa cihazlar eski sürümü göstermeye devam eder.
